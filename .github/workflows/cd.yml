@@ -10,7 +10,7 @@ on:
 
 env:
   ECR_REPOSITORY: homework-helper
-  EKS_CLUSTER_NAME: homeworkhelper
+  EKS_CLUSTER_NAME: demo
   AWS_REGION: us-east-1
   # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # this is for future use
 
@@ -40,14 +40,15 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: homework-helper
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f app/Dockerfile .
+          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f app/Dockerfile ./app
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Configure Kubectl
         uses: azure/setup-kubectl@v3
-        #with:
+        #with:  
         #  version: 'v1.28.3'
         id: install
 
