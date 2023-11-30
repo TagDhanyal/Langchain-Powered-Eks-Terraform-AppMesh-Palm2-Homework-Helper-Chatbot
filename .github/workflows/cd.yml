@@ -50,7 +50,7 @@ jobs:
         uses: azure/setup-kubectl@v3
         id: install
       
-      - name: Update kube config
+      - name: Update kube configs
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
       - name: Deploy to EKS
