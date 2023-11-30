@@ -1,5 +1,5 @@
 # Homework Helper Project Overview
-## Project Description
+## Project Description [![Push to ECR and Deploy to EKS](https://github.com/TagDhanyal/Langchain-Powered-Eks-Terraform-Palm2-Homework-Helper-Chatbot/actions/workflows/cd.yml/badge.svg)](https://github.com/TagDhanyal/Langchain-Powered-Eks-Terraform-Palm2-Homework-Helper-Chatbot/actions/workflows/cd.yml)
 Welcome to the Homework Helper project! This application is designed to assist users with their homework questions by providing an interactive chatbot. Users can ask the chatbot anything related to their schoolwork, and it will provide helpful responses.
 
 ## Live Website
