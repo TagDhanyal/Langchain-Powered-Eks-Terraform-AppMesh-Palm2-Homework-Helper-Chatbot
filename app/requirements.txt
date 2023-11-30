@@ -1,0 +1,7 @@
+boto3
+botocore
+streamlit
+langchain
+google-generativeai
+streamlit_chat
+streamlit-extras

@@ -1,0 +1,72 @@
+name: Push to ECR and Deploy to EKS
+
+on:
+  push:
+    paths:
+      - 'k8s/**'
+      - 'app/**'
+    branches:
+      - main
+
+env:
+  ECR_REPOSITORY: homework-helper
+  EKS_CLUSTER_NAME: homeworkhelper
+  AWS_REGION: us-east-1
+  # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # this is for future use
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set image tag
+        id: set-image-tag
+        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f app/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Configure Kubectl
+        uses: azure/setup-kubectl@v3
+        #with:
+        #  version: 'v1.28.3'
+        id: install
+
+      - name: Update kube config
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+
+      - name: Deploy to EKS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s/deployment.yaml && \
+          kubectl apply -f k8s/
+          kubectl rollout status deployment/homework-helper
+
+      - name: Get LoadBalancer IP
+        id: get-lb-ip
+        run: |
+          LB_IP=$(kubectl get svc homework-helper-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "LoadBalancer IP: $LB_IP"
+          echo "APP_URL=http://$LB_IP" >> $GITHUB_ENV
+          echo "APP_URL: ${{ env.APP_URL }}"

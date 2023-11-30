@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homework-helper
+spec:
+  selector: # Add this section to define the selector
+    matchLabels:
+      app: homework-helper
+  template:
+    metadata:
+      labels:
+        app: homework-helper
+    spec:
+      serviceAccountName: aws-test
+      containers:
+      - name: homework-helper
+        image: DOCKER_IMAGE
+        ports:
+        - name: web
+          containerPort: 8501
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 250m
+          limits:
+            memory: 256Mi
+            cpu: 250m
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - general
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
