@@ -71,7 +71,7 @@ for msg in st.session_state.messages:
 
 if user_prompt and palm_api_key:
 
-    palm.configure(api_key=palm_api_key)  # set API key
+    palm.configure(api_key=palm_api_key)  
 
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     message(user_prompt, is_user=True)
