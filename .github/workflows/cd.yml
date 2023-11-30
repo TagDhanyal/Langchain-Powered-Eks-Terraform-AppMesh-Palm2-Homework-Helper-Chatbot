@@ -5,6 +5,7 @@ on:
     paths:
       - 'k8s/**'
       - 'app/**'
+      - '.github/**'
     branches:
       - main
 
@@ -12,7 +13,7 @@ env:
   ECR_REPOSITORY: homework-helper
   EKS_CLUSTER_NAME: demo
   AWS_REGION: us-east-1
-  # SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # this is for future use
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   build:
@@ -21,10 +22,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
-
-      - name: Set image tag
-        id: set-image-tag
-        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -40,49 +37,49 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: homework-helper
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f app/Dockerfile ./app
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
+          # Update Kubernetes image in deployment.yaml
+          sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s/deployment.yaml
+
       - name: Configure Kubectl
         uses: azure/setup-kubectl@v3
-        #with:  
-        #  version: 'v1.28.3'
         id: install
-
+      
       - name: Update kube config
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
       - name: Deploy to EKS
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}  
         run: |
-          cd k8s && sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" deployment.yaml
           kubectl apply -f k8s/
           kubectl rollout status deployment/homework-helper
 
       - name: Get LoadBalancer IP
         id: get-lb-ip
         run: |
-            retries=0
-            max_retries=30
-            while [ $retries -lt $max_retries ]; do
-              LB_IP=$(kubectl get svc homework-helper-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-              if [ -n "$LB_IP" ]; then
-                echo "LoadBalancer IP: $LB_IP"
-                echo "APP_URL=http://$LB_IP" >> $GITHUB_ENV
-                echo "APP_URL: ${{ env.APP_URL }}"
-                break
-              else
-                echo "LoadBalancer IP not available yet. Retrying in 10 seconds..."
-                sleep 10
-                ((retries++))
-              fi
-            done
-            if [ $retries -eq $max_retries ]; then
-              echo "Failed to get LoadBalancer IP after $max_retries retries. Check your EKS service."
-              exit 1
+          retries=0
+          max_retries=30
+          while [ $retries -lt $max_retries ]; do
+            LB_IP=$(kubectl get svc homework-helper-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [ -n "$LB_IP" ]; then
+              echo "LoadBalancer IP: $LB_IP"
+              echo "APP_URL=http://$LB_IP" >> $GITHUB_ENV
+              echo "APP_URL: ${{ env.APP_URL }}"
+              break
+            else
+              echo "LoadBalancer IP not available yet. Retrying in 10 seconds..."
+              sleep 10
+              ((retries++))
             fi
+          done
+          if [ $retries -eq $max_retries ]; then
+            echo "Failed to get LoadBalancer IP after $max_retries retries. Check your EKS service."
+            exit 1
+          fi
