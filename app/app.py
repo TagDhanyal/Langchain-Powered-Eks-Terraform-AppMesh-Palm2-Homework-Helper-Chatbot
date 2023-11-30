@@ -79,7 +79,7 @@ if user_prompt and palm_api_key:
     response = llm_chain.run(user_prompt)  # get response from PaLM llm_chain
 
     msg = {"role": "assistant", "content": response}
-    st.session_state.messages.append(msg)  # add message to the chat history
+    st.session_state.messages.append(msg)  
     message(msg["content"])  # display message on the screen
 
 def clear_chat():
