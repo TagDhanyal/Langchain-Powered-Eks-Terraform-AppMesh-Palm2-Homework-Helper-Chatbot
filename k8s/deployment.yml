@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: homework-helper
 spec:
-  selector: # Add this section to define the selector
+  selector:
     matchLabels:
       app: homework-helper
   template:

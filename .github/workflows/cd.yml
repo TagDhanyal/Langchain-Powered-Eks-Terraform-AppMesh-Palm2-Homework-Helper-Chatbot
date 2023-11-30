@@ -60,14 +60,29 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s/deployment.yaml && \
+          cd k8s && sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" deployment.yaml
           kubectl apply -f k8s/
           kubectl rollout status deployment/homework-helper
 
       - name: Get LoadBalancer IP
         id: get-lb-ip
         run: |
-          LB_IP=$(kubectl get svc homework-helper-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-          echo "LoadBalancer IP: $LB_IP"
-          echo "APP_URL=http://$LB_IP" >> $GITHUB_ENV
-          echo "APP_URL: ${{ env.APP_URL }}"
+            retries=0
+            max_retries=30
+            while [ $retries -lt $max_retries ]; do
+              LB_IP=$(kubectl get svc homework-helper-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+              if [ -n "$LB_IP" ]; then
+                echo "LoadBalancer IP: $LB_IP"
+                echo "APP_URL=http://$LB_IP" >> $GITHUB_ENV
+                echo "APP_URL: ${{ env.APP_URL }}"
+                break
+              else
+                echo "LoadBalancer IP not available yet. Retrying in 10 seconds..."
+                sleep 10
+                ((retries++))
+              fi
+            done
+            if [ $retries -eq $max_retries ]; then
+              echo "Failed to get LoadBalancer IP after $max_retries retries. Check your EKS service."
+              exit 1
+            fi
