@@ -3,8 +3,8 @@
 Welcome to the Homework Helper project! This application is designed to assist users with their homework questions by providing an interactive chatbot. Users can ask the chatbot anything related to their schoolwork, and it will provide helpful responses.
 
 ## Live Website
-Explore the live [Homework Helper website](#insert-live-website-link-here). 
-![Screenshot](screenshot/screenshot1.png)
+Explore the live [Homework Helper website](http://acd43e5ba4e3c4f5eaba7005e08faa42-1234218430.us-east-1.elb.amazonaws.com/) 
+![Screenshot](screenshot.png)
 
 ## Technology Stack
 The project utilizes the following technologies:
